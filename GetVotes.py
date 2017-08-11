@@ -27,7 +27,7 @@ class GoogleVoter:
         names = []
 
         self.session.headers.update({"User-Agent": random_user_agent()})
-        r = self.session.get(url + search_term + "+wikipedia")
+        r = self.session.get(url + search_term + "+wikipedia", verify=False)
         raw_html = r.text
 
         for iteration in re.finditer('<a href="', raw_html):
@@ -51,7 +51,7 @@ class WikipediaVoter:
         url = "https://" + self.lang + ".wikipedia.org/w/index.php?fulltext=1&search=" + search_term
         names = []
 
-        r = requests.get(url)
+        r = requests.get(url, verify=False)
         raw_html = r.text
         start = raw_html.find("<ul class='mw-search-results'>")  # identifier for search results titles
         end = raw_html.find("</ul>", start)

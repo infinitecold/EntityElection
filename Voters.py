@@ -22,12 +22,12 @@ class GoogleVoter:
     def __init__(self):
         self.session = requests.Session()
 
-    def get_wiki_links(self, search_term, count):
+    def get_wiki_names(self, search_term, count):
         url = "http://www.google.com/search?q="
         names = []
 
         self.session.headers.update({"User-Agent": random_user_agent()})
-        r = self.session.get(url + search_term + "+wikipedia", verify=False)
+        r = self.session.get(url + search_term + " wikipedia", verify=False)
         raw_html = r.text
 
         for iteration in re.finditer('<a href="', raw_html):

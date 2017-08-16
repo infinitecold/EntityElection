@@ -1,6 +1,7 @@
 import random
 import re
 import requests
+import time
 
 def random_user_agent():
     user_agents = \
@@ -15,7 +16,6 @@ def random_user_agent():
          "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 7.0; InfoPath.3; .NET CLR 3.1.40767; Trident/6.0; en-IN)",
          "Mozilla/5.0 (compatible; MSIE 10.0; Macintosh; Intel Mac OS X 10_7_3; Trident/6.0)",
          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A"]
-
     return random.choice(user_agents)
 
 class GoogleVoter:
@@ -25,19 +25,29 @@ class GoogleVoter:
     def get_wiki_names(self, search_term, count):
         url = "http://www.google.com/search?q="
         names = []
+        is_blocked = True
+        wait = 0
+        
+        while is_blocked == True:
+            time.sleep(wait)
+            self.session.headers.update({"User-Agent": random_user_agent()})
+            r = self.session.get(url + search_term + " wikipedia.org", verify=False)
+            raw_html = r.text
 
-        self.session.headers.update({"User-Agent": random_user_agent()})
-        r = self.session.get(url + search_term + " wikipedia", verify=False)
-        raw_html = r.text
+            for iteration in re.finditer('<a href="', raw_html):
+                end = raw_html.find('"', iteration.end())
+                link = raw_html[iteration.end():end]
 
-        for iteration in re.finditer('<a href="', raw_html):
-            end = raw_html.find('"', iteration.end())
-            link = raw_html[iteration.end():end]
-
-            # only keep wikipedia links
-            if "wikipedia.org/wiki/" in link:
-                name = link.split('/')[4].replace('_', ' ')  # get the name of the article
-                names.append(name)
+                # only keep wikipedia links
+                if "wikipedia.org/wiki/" in link:
+                    name = link.split('/')[4].replace('_', ' ')  # get the name of the article
+                    names.append(name)
+            
+            if raw_html.find("Our systems have detected unusual traffic from your computer network.") == -1:
+                is_blocked = False  # search went through
+            else:
+                wait += random.randint(60, 300)
+                print("WAITING FOR " + str(wait) + " SECONDS BEFORE RETRYING GOOGLE QUERY...")
 
         return names[0:count]
 

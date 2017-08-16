@@ -1,6 +1,5 @@
 config.ini
 .idea
 *.iml
-*.log*
-*.pyc
-/data/
+/src/*.pyc
+/data

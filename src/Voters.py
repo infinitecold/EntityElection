@@ -31,7 +31,7 @@ class GoogleVoter:
         while is_blocked == True:
             time.sleep(wait)
             self.session.headers.update({"User-Agent": random_user_agent()})
-            r = self.session.get(url + search_term + " wikipedia.org", verify=False)
+            r = self.session.get(url + search_term + " wikipedia", verify=False)
             raw_html = r.text
 
             for iteration in re.finditer('<a href="', raw_html):
@@ -46,7 +46,7 @@ class GoogleVoter:
             if raw_html.find("Our systems have detected unusual traffic from your computer network.") == -1:
                 is_blocked = False  # search went through
             else:
-                wait += random.randint(60, 300)
+                wait += random.randint(3600, 18000)
                 print("WAITING FOR " + str(wait) + " SECONDS BEFORE RETRYING GOOGLE QUERY...")
 
         return names[0:count]

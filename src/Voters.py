@@ -31,7 +31,7 @@ class GoogleVoter:
         while is_blocked == True:
             time.sleep(wait)
             self.session.headers.update({"User-Agent": random_user_agent()})
-            r = self.session.get(url + search_term + " wikipedia", verify=False)
+            r = self.session.get(url + search_term + " wiki", verify=False)  # possibly use site:wikipedia.org
             raw_html = r.text
 
             for iteration in re.finditer('<a href="', raw_html):

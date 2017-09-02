@@ -33,7 +33,7 @@ args = parser.parse_args()
 
 
 # VARIABLES
-NUM_OF_SEARCH_RESULTS = 10  # maximum for each voter
+NUM_OF_SEARCH_RESULTS = 5  # maximum for each voter
 
 # data structures and objects
 cache = []
@@ -44,14 +44,25 @@ wikipedia = WikipediaVoter(args.lang)
 
 # MySQL
 config = ConfigParser.RawConfigParser()
-config.read("../config.ini")
-db = MySQLdb.connect(host=config.get("MySQL", "host"),
-                     port=int(config.get("MySQL", "port")),
-                     user=config.get("MySQL", "user"),
-                     passwd=config.get("MySQL", "passwd"),
-                     db=config.get("MySQL", "db"))
-IDs_table = "WikiID" + args.lang.upper()
-cur = db.cursor()
+config.read("/eecs/home/kelvin/EntityElection/config.ini")
+
+KBP15_db = MySQLdb.connect(host=config.get("KBP15", "host"),
+                           port=int(config.get("KBP15", "port")),
+                           user=config.get("KBP15", "user"),
+                           passwd=config.get("KBP15", "passwd"),
+                           db=config.get("KBP15", "db"))
+wiki2freebase_table = "WikiID" + args.lang.upper()
+KBP15_cur = KBP15_db.cursor()
+
+freebase_db = MySQLdb.connect(host=config.get("Freebase", "host"),
+                              port=int(config.get("Freebase", "port")),
+                              user=config.get("Freebase", "user"),
+                              passwd=config.get("Freebase", "passwd"),
+                              db=config.get("Freebase", "db"))
+name2id_table = "freebase-onlymid_-_en_name2id"
+id2rowid_table = "freebase-onlymid_-_fb-id2row-id"
+datadump_table = "freebase-onlymid_-_datadump"
+freebase_cur = freebase_db.cursor()
 
 
 # METHODS
@@ -76,15 +87,36 @@ def get_freebase_ids(wiki_names, site):
         start = raw_html.find('<tr id="mw-pageinfo-article-id">')  # identifier for page ID
         end = raw_html.find("</td></tr>", start)
 
-        wiki_id = raw_html[start:end].split('>')[4]
+        wiki_id = raw_html[start:end].split('>')[4]  # manually retrieves wiki ID from raw HTML
             
         # wiki ID -> freebase ID
-        cur.execute("SELECT * FROM {0} WHERE `pageid` = {1}".format(IDs_table, wiki_id))
-        row = cur.fetchone()
+        KBP15_cur.execute("SELECT * FROM {0} WHERE `pageid` = {1}".format(wiki2freebase_table, wiki_id))
+        row = KBP15_cur.fetchone()
 
         freebase_id = "None"
         if row is not None:  # if no result is found in MySQL, the result is NoneType
             freebase_id = row[0]
+        else:  # otherwise, check Freebase
+            wiki_name = wiki_name.replace("'", "\\'")
+            wiki_name = wiki_name.replace('"', '\"')
+            freebase_cur.execute("""SELECT * FROM `{0}` WHERE `en_name` = '"{1}"@en'""".format(name2id_table, wiki_name))
+            row = freebase_cur.fetchone()  # gets list of possible freebase IDs
+            if row is not None:
+                possible_ids = row[1].split(',')
+                for possible_id in possible_ids:
+                    possible_id = possible_id[0:possible_id.index('(')]
+                    freebase_cur.execute("SELECT * FROM `{0}` WHERE `freebase_id` = '<http://rdf.freebase.com/ns/{1}>'".format(id2rowid_table, possible_id))
+                    row = freebase_cur.fetchone()  # gets min and max row IDs for the current freebase ID
+                    if row is not None:
+                        min_row = row[1]
+                        max_row = row[2]
+                        freebase_cur.execute("SELECT * FROM `{0}` WHERE `row_id` > {1} AND `row_id` < {2}".format(datadump_table, min_row, max_row))
+                        results = freebase_cur.fetchall();  # gets all triples for the current freebase ID
+                        for row in results:
+                            if row[1] == "<http://rdf.freebase.com/ns/common.topic.topic_equivalent_webpage>" and wiki_id in row[2]:
+                                freebase_id = possible_id
+                                break
+
         freebase_ids.append(freebase_id)
         logging.info("{0}{1}. {2}\t{3}\t{4}".format(site, count+1, wiki_name, wiki_id, freebase_id))
     

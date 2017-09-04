@@ -16,21 +16,23 @@ logging.basicConfig(format='%(asctime)s\t%(message)s', level=logging.INFO)
 # parses command-line arguments
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('inputfilepath', type=str, help='filepath to .txt file to be processed')
-parser.add_argument('--outputfilepath', type=str, default="../data/results/out.txt", help='filepath to output .txt file')
-parser.add_argument('--cachefilepath', type=str, default="../data/cache/Election.cache", help='filepath to .cache file')
-parser.add_argument('--authorsfilepath', type=str, default="../data/KBP16.authors", help='filepath to .authors file')
+parser.add_argument('--cachefilepath', type=str, default="/eecs/home/kelvin/EntityElection/data/cache/Election.cache", help='filepath to .cache file')
+parser.add_argument('--outputfilepath', type=str, default="/eecs/home/kelvin/EntityElection/data/results/", help='filepath to output .txt file')
+parser.add_argument('--authorsfilepath', type=str, default="/eecs/home/kelvin/EntityElection/data/KBP16.authors", help='filepath to .authors file')
+parser.add_argument('--candidatelistfilepath', type=str, default="None", help='filepath to .candidates file, if specified')
 parser.add_argument('--lang', type=str, default="en", help='language of input file')
 # constants and tuning parameters
 parser.add_argument('--numofsearchresults', type=int, default=3)
-parser.add_argument('--decay', type=float, default=0.9)
+parser.add_argument('--decay', type=float, default=0.8)
 parser.add_argument('--wikipediafactor', type=float, default=0.75)
 parser.add_argument('--googlefactor', type=float, default=1.0)
-parser.add_argument('--adjacentfactor', type=float, default=0.5)
+parser.add_argument('--adjacentfactor', type=float, default=0.3)
 parser.add_argument('--individualfactor', type=float, default=1.0)
 parser.add_argument('--distancethreshold', type=int, default=50)
-parser.add_argument('--nilthreshold', type=float, default=2.5)
+parser.add_argument('--nilthreshold', type=float, default=1.5)
 args = parser.parse_args()
 
+args.outputfilepath = "{0}{1}-{2}-{3}-{4}-{5}-{6}.out".format(args.outputfilepath, args.numofsearchresults, args.decay, args.wikipediafactor, args.adjacentfactor, args.distancethreshold, args.nilthreshold)
 
 # VARIABLES
 TEAM_NAME = "YorkU0"
@@ -138,6 +140,7 @@ for document, info in documents.iteritems():
             if entity[3] == "NOM":  # if nominal entity
                 # scan previous entities
                 count = 0
+                scan_answer = "NIL"
                 while count < index:
                     count += 1
                     previous_offset = info[index-count][1]
@@ -145,15 +148,15 @@ for document, info in documents.iteritems():
                     offset_difference = int(entity[1].split('-')[0]) - int(previous_offset.split('-')[0])
                     if offset_difference < 2*args.distancethreshold:
                         if offset_difference > 0 and previous_type == (entity[2], "NAM"):
-                            final_answer = final_answers[index-count]
-                            if freebase_id not in candidate_list:
-                                candidate_list[freebase_id] = 0
-                            candidate_list[freebase_id] += args.individualfactor
+                            scan_answer = final_answers[index-count]
+                            if scan_answer not in candidate_list:
+                                candidate_list[scan_answer] = 0
+                            candidate_list[scan_answer] += args.individualfactor*2
                             norm_factor += args.individualfactor
-                            logging.info("USING PREVIOUS {0} ({1}): {2}".format(final_answer, info[index-count][0], args.individualfactor))
+                            logging.info("USING PREVIOUS: {0} ({1})".format(scan_answer, info[index-count][0]))
                             break
                     else:
-                        final_answer = determine_nil(entity[0], final_answer)
+                        scan_answer = determine_nil(entity[0], final_answer)
                         break
             else:  # if name entity
                 # search by itself
@@ -173,12 +176,20 @@ for document, info in documents.iteritems():
             else:
                 final_answer = determine_nil(entity[0], final_answer)
         final_answers.append(final_answer)
-            
         logging.info("FINAL ANSWER: {0}".format(final_answer))
         logging.info("CANDIDATE LIST: {0}\n".format(sorted_list))
             
         with open(args.outputfilepath, 'a') as output_file:
-            output_file.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(TEAM_NAME, "TRAINING", entity[0], 
-                                                                                document + ":" + entity[1], final_answer, 
+            output_file.write("{0}\t{1}\t{2}\t{3}:{4}\t{5}\t{6}\t{7}\t{8}\n".format(TEAM_NAME, "TRAINING", entity[0], 
+                                                                                document, entity[1], final_answer, 
                                                                                 entity[2], entity[3], "1.0").encode("utf-8"))
+        if args.candidatelistfilepath != "None":
+            with open(args.candidatelistfilepath, 'a') as output_candidatelist:
+                output_candidatelist.write("{0}:{1}\t{2}\t{3}\t{4}\t{5}\t[".format(document, entity[1], entity[0], entity[2], 
+                                                                                  final_answer, entity[0]).encode("utf-8"))
+                for count, candidate in enumerate(sorted_list):
+                    if count == len(sorted_list) - 1:
+                        output_candidatelist.write("{0}".format(candidate[0]))
+                    output_candidatelist.write("{0} || ".format(candidate[0]))
+                output_candidatelist.write("]\n")
 logging.info("ELECTION COMPLETE")

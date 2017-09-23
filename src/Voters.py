@@ -39,7 +39,7 @@ class GoogleVoter:
                 link = raw_html[iteration.end():end]
 
                 # only keep wikipedia links
-                if "wikipedia.org/wiki/" in link:
+                if "wikipedia.org/" in link:
                     name = link.split('/')[4].replace('_', ' ')  # get the name of the article
                     names.append(name)
             

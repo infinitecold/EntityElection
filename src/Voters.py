@@ -2,6 +2,7 @@ import random
 import re
 import requests
 import time
+import urllib
 
 def random_user_agent():
     user_agents = \
@@ -31,7 +32,7 @@ class GoogleVoter:
         while is_blocked == True:
             time.sleep(wait)
             self.session.headers.update({"User-Agent": random_user_agent()})
-            r = self.session.get(url + search_term + " wiki", verify=False)  # possibly use site:wikipedia.org
+            r = self.session.get(url + search_term + " wiki", verify=False)  #  use wiki or site:wikipedia.org
             raw_html = r.text
 
             for iteration in re.finditer('<a href="', raw_html):
@@ -40,9 +41,13 @@ class GoogleVoter:
 
                 # only keep wikipedia links
                 if "wikipedia.org/" in link:
-                    name = link.split('/')[4].replace('_', ' ')  # get the name of the article
-                    names.append(name)
-            
+                    #name2 = link.split('/')[4].replace('_', ' ')  # get the name of the article
+                    name2 = link.split('/') 
+                    if len(name2) >= 5 :
+                        name3 = name2[4].replace('_', ' ')  # get the name of the article  
+                        name=urllib.unquote(name3.encode('utf-8')) 
+                        names.append(name) 
+
             if raw_html.find("Our systems have detected unusual traffic from your computer network.") == -1:
                 is_blocked = False  # search went through
             else:
@@ -56,7 +61,7 @@ class WikipediaVoter:
 
     def __init__(self, lang):
         self.lang = lang
-
+        
     def get_wiki_names(self, search_term, count):
         url = "https://" + self.lang + ".wikipedia.org/w/index.php?fulltext=1&search=" + search_term
         names = []

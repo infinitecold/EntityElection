@@ -101,12 +101,14 @@ with open(args.inputfilepath, 'r') as input_file:
         if document not in documents:
             documents[document] = []
         # document_info format: (name, offset, entity type (ORG, PER, etc.), entity type (NAM/NOM))
-        entity_info = (line_data[2], document_data[1], line_data[5], line_data[6])
+        # entity_info = (line_data[2], document_data[1], line_data[5], line_data[6])
+        entity_info = (line_data[2], document_data[1], line_data[5], line_data[6], line_data[0], line_data[1], line_data[7])     
         documents[document].append(entity_info)
 
 for document, info in documents.iteritems():
     # nil_cache.update({}.fromkeys(nil_cache, "None"))  # clear values in nil cache
     final_answers = []
+
     for index, entity in enumerate(info):
         final_answer = "NIL"
         candidate_list = {}
@@ -175,18 +177,22 @@ for document, info in documents.iteritems():
                         final_answer = determine_nil(entity[0], final_answer)
             else:
                 final_answer = determine_nil(entity[0], final_answer)
+
+        # accounts for mistakes in MySQL database
+        if final_answer ==  "m.027c5fh":
+            final_answer = "m.0d05w3"
+        if final_answer ==  "m.07dv8":
+            final_answer = "m.06f32"
+
         final_answers.append(final_answer)
         logging.info("FINAL ANSWER: {0}".format(final_answer))
         logging.info("CANDIDATE LIST: {0}\n".format(sorted_list))
-            
+
         with open(args.outputfilepath, 'a') as output_file:
-            output_file.write("{0}\t{1}\t{2}\t{3}:{4}\t{5}\t{6}\t{7}\t{8}\n".format(TEAM_NAME, "TRAINING", entity[0], 
-                                                                                document, entity[1], final_answer, 
-                                                                                entity[2], entity[3], "1.0").encode("utf-8"))
+            output_file.write("{0}\t{1}\t{2}\t{3}:{4}\t{5}\t{6}\t{7}\t{8}".format(entity[4], entity[5], entity[0], document, entity[1], final_answer, entity[2], entity[3], entity[6]).encode("utf-8"))
         if args.candidatelistfilepath != "None":
             with open(args.candidatelistfilepath, 'a') as output_candidatelist:
-                output_candidatelist.write("{0}:{1}\t{2}\t{3}\t{4}\t{5}\t[".format(document, entity[1], entity[0], entity[2], 
-                                                                                  final_answer, entity[0]).encode("utf-8"))
+                output_candidatelist.write("{0}:{1}\t{2}\t{3}\t{4}\t{5}\t[".format(document, entity[1], entity[0], entity[2], final_answer, entity[0]).encode("utf-8"))
                 for count, candidate in enumerate(sorted_list):
                     if count == len(sorted_list) - 1:
                         output_candidatelist.write("{0}".format(candidate[0]))

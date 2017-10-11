@@ -7,6 +7,8 @@ import random
 import requests
 import sys
 import time
+import urllib
+import types
 from Voters import GoogleVoter, WikipediaVoter
 
 
@@ -81,26 +83,32 @@ def get_freebase_ids(wiki_names, site):
     freebase_ids = []
     for count, wiki_name in enumerate(wiki_names):
         # wiki name -> wiki ID
+        wiki_name = wiki_name.decode('utf8','ignore')
         wiki_url = "https://" + args.lang + ".wikipedia.org/w/?title=" + wiki_name + "&action=info"
+
         r = requests.get(wiki_url)
         raw_html = r.text
         start = raw_html.find('<tr id="mw-pageinfo-article-id">')  # identifier for page ID
         end = raw_html.find("</td></tr>", start)
 
-        wiki_id = raw_html[start:end].split('>')[4]  # manually retrieves wiki ID from raw HTML
-            
+        if start != -1 and end != -1: 
+            wiki_id = raw_html[start:end].split('>')[4]  # manually retrieves wiki ID from raw HTML
+        else:
+            wiki_id = 0
+
         # wiki ID -> freebase ID
         KBP15_cur.execute("SELECT * FROM {0} WHERE `pageid` = {1}".format(wiki2freebase_table, wiki_id))
-        row = KBP15_cur.fetchone()
+        row = KBP15_cur.fetchone()  
 
         freebase_id = "None"
-        if row is not None:  # if no result is found in MySQL, the result is NoneType
+        if row is not None :  # if no result is found in MySQL, the result is NoneType
             freebase_id = row[0]
-        else:  # otherwise, check Freebase
+        else:  # otherwise, check Sed's Freebase
             wiki_name = wiki_name.replace("'", "\\'")
             wiki_name = wiki_name.replace('"', '\"')
             freebase_cur.execute("""SELECT * FROM `{0}` WHERE `en_name` = '"{1}"@en'""".format(name2id_table, wiki_name))
             row = freebase_cur.fetchone()  # gets list of possible freebase IDs
+
             if row is not None:
                 possible_ids = row[1].split(',')
                 for possible_id in possible_ids:
@@ -113,13 +121,24 @@ def get_freebase_ids(wiki_names, site):
                         freebase_cur.execute("SELECT * FROM `{0}` WHERE `row_id` > {1} AND `row_id` < {2}".format(datadump_table, min_row, max_row))
                         results = freebase_cur.fetchall();  # gets all triples for the current freebase ID
                         for row in results:
-                            if row[1] == "<http://rdf.freebase.com/ns/common.topic.topic_equivalent_webpage>" and wiki_id in row[2]:
-                                freebase_id = possible_id
-                                break
+#                            if row[1] == "<http://rdf.freebase.com/ns/common.topic.topic_equivalent_webpage>" and wiki_id in row[2]:
+                            wiki_name2 = wiki_name.replace(' ','_')
+                            wiki_name2 = urllib.quote(wiki_name2.encode('latin-1','ignore'))
+
+                            wiki_url_en = "<http://en.wikipedia.org/wiki/" + wiki_name2 + ">"
+                            wiki_url_zh = "<http://zh.wikipedia.org/wiki/" + wiki_name2 + ">"
+                            wiki_url_es = "<http://es.wikipedia.org/wiki/" + wiki_name2 + ">"
+                            topic_webpage = "common.topic.topic_equivalent_webpage" 
+
+                            if topic_webpage in row[1]:
+                                if row[2] == wiki_url_en or row[2] == wiki_url_zh: # or row[2] == wiki_url_es:
+#                                    print(row[2],wiki_url_en,wiki_id,possible_id)
+                                    freebase_id = possible_id
+                                    break;
 
         freebase_ids.append(freebase_id)
         logging.info("{0}{1}. {2}\t{3}\t{4}".format(site, count+1, wiki_name, wiki_id, freebase_id))
-    
+        
     return freebase_ids
 
 

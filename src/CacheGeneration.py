@@ -37,7 +37,7 @@ args = parser.parse_args()
 # VARIABLES
 NUM_OF_SEARCH_RESULTS = 5  # maximum for each voter
 
-# data structures and objects
+# Data structures and objects
 cache = []
 entities = []  # raw entities from the input file
 queries = []  # assembled queries using the entities
@@ -103,7 +103,7 @@ def get_freebase_ids(wiki_names, site):
         freebase_id = "None"
         if row is not None :  # if no result is found in MySQL, the result is NoneType
             freebase_id = row[0]
-        else:  # otherwise, check Sed's Freebase
+        else:  # otherwise, check Freebase
             wiki_name = wiki_name.replace("'", "\\'")
             wiki_name = wiki_name.replace('"', '\"')
             freebase_cur.execute("""SELECT * FROM `{0}` WHERE `en_name` = '"{1}"@en'""".format(name2id_table, wiki_name))
@@ -121,7 +121,7 @@ def get_freebase_ids(wiki_names, site):
                         freebase_cur.execute("SELECT * FROM `{0}` WHERE `row_id` > {1} AND `row_id` < {2}".format(datadump_table, min_row, max_row))
                         results = freebase_cur.fetchall();  # gets all triples for the current freebase ID
                         for row in results:
-#                            if row[1] == "<http://rdf.freebase.com/ns/common.topic.topic_equivalent_webpage>" and wiki_id in row[2]:
+                            #if row[1] == "<http://rdf.freebase.com/ns/common.topic.topic_equivalent_webpage>" and wiki_id in row[2]:
                             wiki_name2 = wiki_name.replace(' ','_')
                             wiki_name2 = urllib.quote(wiki_name2.encode('latin-1','ignore'))
 
@@ -132,7 +132,6 @@ def get_freebase_ids(wiki_names, site):
 
                             if topic_webpage in row[1]:
                                 if row[2] == wiki_url_en or row[2] == wiki_url_zh: # or row[2] == wiki_url_es:
-#                                    print(row[2],wiki_url_en,wiki_id,possible_id)
                                     freebase_id = possible_id
                                     break;
 

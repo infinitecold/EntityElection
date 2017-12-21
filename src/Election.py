@@ -31,13 +31,13 @@ parser.add_argument('--individualfactor', type=float, default=1.0)
 parser.add_argument('--distancethreshold', type=int, default=150)
 parser.add_argument('--nilthreshold', type=float, default=1.0)
 args = parser.parse_args()
-
 args.outputfilepath = "{0}{1}-{2}-{3}-{4}-{5}-{6}.out".format(args.outputfilepath, args.numofsearchresults, args.decay, args.wikipediafactor, args.adjacentfactor, args.distancethreshold, args.nilthreshold)
+
 
 # VARIABLES
 TEAM_NAME = "YorkU0"
 
-# data structures and objects
+# Data structures and objects
 cache = {}
 authors = set()
 documents = OrderedDict()
@@ -100,13 +100,13 @@ with open(args.inputfilepath, 'r') as input_file:
         document = document_data[0]
         if document not in documents:
             documents[document] = []
-        # document_info format: (name, offset, entity type (ORG, PER, etc.), entity type (NAM/NOM))
-        # entity_info = (line_data[2], document_data[1], line_data[5], line_data[6])
+        #document_info format: (name, offset, entity type (ORG, PER, etc.), entity type (NAM/NOM))
+        #entity_info = (line_data[2], document_data[1], line_data[5], line_data[6])
         entity_info = (line_data[2], document_data[1], line_data[5], line_data[6], line_data[0], line_data[1], line_data[7])     
         documents[document].append(entity_info)
 
 for document, info in documents.iteritems():
-    # nil_cache.update({}.fromkeys(nil_cache, "None"))  # clear values in nil cache
+    #nil_cache.update({}.fromkeys(nil_cache, "None"))  # clear values in nil cache
     final_answers = []
 
     for index, entity in enumerate(info):
@@ -178,7 +178,7 @@ for document, info in documents.iteritems():
             else:
                 final_answer = determine_nil(entity[0], final_answer)
 
-        # accounts for mistakes in MySQL database
+        # accounts for errors in MySQL database
         if final_answer ==  "m.027c5fh":
             final_answer = "m.0d05w3"
         if final_answer ==  "m.07dv8":
